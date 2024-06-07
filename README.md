@@ -11,7 +11,7 @@
 
 
 #### 使用文档
-http://doc.easydo.plus/
+http://blog.easydo.plus/
 
 
 #### 参与贡献
