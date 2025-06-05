@@ -135,6 +135,10 @@ public class PvfData extends PvfCrc {
                     //kor.str的位置
                     String strPath = stringTableDataList.get(anInt).getContext().toLowerCase();
                     log.info("read kor.str:{}",strPath);
+                    if (strPath.contains("chatemoticon")) {
+                        break;
+                    }
+
                     PvfFileListData strKor = pvfFileListMap.get(strPath);
                     String contextStr = strKor.getContextStr();
                     if(CharSequenceUtil.isNotBlank(contextStr)){

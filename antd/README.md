@@ -2,6 +2,13 @@
 
 This project is initialized with [Ant Design Pro](https://pro.ant.design). Follow is the quick guide for how to use.
 
+
+> Nodejs Version：v16.20.2
+>
+> `vfox install nodejs@16.20.2`
+>
+> `vfox use -g nodejs@16.20.2`
+
 ## Environment Prepare
 
 Install `node_modules`:

@@ -20,7 +20,6 @@ import plus.easydo.dnf.util.ItemReaderUtil;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static plus.easydo.dnf.entity.table.DaItemEntityTableDef.DA_ITEM_ENTITY;
@@ -36,6 +35,9 @@ import static plus.easydo.dnf.entity.table.DaItemEntityTableDef.DA_ITEM_ENTITY;
 public class DaItemServiceImpl extends ServiceImpl<DaItemMapper, DaItemEntity> implements IDaItemService {
 
 
+    //
+
+
     @Override
     public Page<DaItemEntity> itemPage(DaItemQo daItemQo) {
         Page<DaItemEntity> page = new Page<>(daItemQo.getCurrent(), daItemQo.getPageSize());
@@ -49,7 +51,8 @@ public class DaItemServiceImpl extends ServiceImpl<DaItemMapper, DaItemEntity> i
 
     @Override
     public List<DaItemEntity> listByName(String name) {
-        return list(query().and(DA_ITEM_ENTITY.NAME.like(name)));
+        // todo 缓存优化，因为数据量还是很大
+        return list(query().and(DA_ITEM_ENTITY.NAME.like(name)).limit(50));
     }
 
     @Override
@@ -87,9 +90,12 @@ public class DaItemServiceImpl extends ServiceImpl<DaItemMapper, DaItemEntity> i
     @Override
     public void importItemForMap(Map<Integer, String> itemMap) {
         log.info("开始批量导入物品信息=================》");
-        itemMap.forEach((key,value)->{
+        itemMap.forEach((key, value) -> {
+            if (key <= 2023889026) {
+                return;
+            }
             JSONObject res = ItemReaderUtil.readerForStr(value);
-            res.set("itemId",key);
+            res.set("itemId", key);
             importItemForJson(res);
         });
         log.info("批量导入物品信息结束=================》");

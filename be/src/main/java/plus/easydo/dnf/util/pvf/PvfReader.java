@@ -254,6 +254,7 @@ public class PvfReader {
                 .build();
         pvfData.readPvfFileData();
         pvfData.readNStringList();
+        log.info(">>>> read pvdData success , size: {}", pvfData.getNStringMap().size());
         return pvfData;
     }
 

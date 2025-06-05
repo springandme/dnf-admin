@@ -34,11 +34,17 @@ public class MyApplicationRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        initPvf();
+    }
+
+    public void initPvf() {
         daGameConfigService.cacheGameConf();
         DaGameConfig readConf = CacheManager.GAME_CONF_MAP.get(SystemConstant.READER_PVF);
         String confValue = readConf.getConfData();
+        confValue = "false";
         if (Boolean.parseBoolean(confValue)) {
             String pvfPath = CacheManager.GAME_CONF_MAP.get(SystemConstant.PVF_PATH).getConfData();
+            pvfPath = "D:\\BaiduNetdiskDownload\\Script.pvf";
             if (FileUtil.isFile(pvfPath)) {
                 try {
                     log.info("开始解析pvf文件=======================》");
@@ -47,7 +53,7 @@ public class MyApplicationRunner implements ApplicationRunner {
                     daItemService.importItemForMap(itemMap);
                 } catch (Exception exception) {
                     log.warn("解析pvf文件失败,结束解析,{}", ExceptionUtil.getMessage(exception));
-                }finally {
+                } finally {
                     readConf.setConfData("false");
                     daGameConfigService.updateById(readConf);
                 }
