@@ -58,3 +58,50 @@ export async function sendMail(body: API.SendMailDto, options?: { [key: string]:
     ...(options || {}),
   });
 }
+
+/** 批量发送邮件 POST /api/mail/batchSendMail */
+export async function batchSendMail(body: API.SendMailDto, options?: { [key: string]: any }) {
+  return request<API.RBatchSendResultDto>('/api/mail/batchSendMail', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 异步批量发送邮件 POST /api/mail/asyncBatchSendMail */
+export async function asyncBatchSendMail(body: API.SendMailDto, options?: { [key: string]: any }) {
+  return request<API.RString>('/api/mail/asyncBatchSendMail', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 查询批量发送进度 GET /api/mail/batchSendProgress/${param0} */
+export async function getBatchSendProgress(
+  taskId: string,
+  options?: { [key: string]: any },
+) {
+  return request<API.RBatchSendResultDto>(`/api/mail/batchSendProgress/${taskId}`, {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+
+/** 验证角色列表 POST /api/mail/validateCharacList */
+export async function validateCharacList(body: number[], options?: { [key: string]: any }) {
+  return request<API.RListLong>('/api/mail/validateCharacList', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

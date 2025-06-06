@@ -20,11 +20,10 @@ import java.net.UnknownHostException;
 @SpringBootApplication
 public class DnfAdminApplication {
 
-
     public static void main(String[] args) {
         SpringApplication.run(DnfAdminApplication.class, args);
         String publicIp = System.getProperty("PUBLIC_IP");
-        if(CharSequenceUtil.isBlank(publicIp)){
+        if (CharSequenceUtil.isBlank(publicIp)) {
             try {
                 publicIp = InetAddress.getLocalHost().getHostAddress();
             } catch (UnknownHostException e) {
@@ -34,15 +33,25 @@ public class DnfAdminApplication {
         log.info(
                 "服务启动成功," +
                         "\n\t本地访问地址: \t\t{}" +
-                        "\n\t外部访问地址: \t\t{}\n"
-                , "http://localhost:8888"
-                , "http://"+publicIp+":8888"
-        );
+                        "\n\t外部访问地址: \t\t{}\n",
+                "http://localhost:8888", "http://" + publicIp + ":8888");
         String os = System.getProperty("os.name");
         if (os.toLowerCase().startsWith("win")) {
-            //如果是Windows系统
+            // 如果是Windows系统
             RuntimeUtil.exec("cmd /c start " + "http://localhost:8888");
         }
+
+        if (os.toLowerCase().startsWith("mac")) {
+            // 如果是Mac系统
+            RuntimeUtil.exec("open " + "http://localhost:8888");
+        }
+
+        if (os.toLowerCase().startsWith("linux")) {
+            // 如果是Linux系统
+            RuntimeUtil.exec("xdg-open " + "http://localhost:8888");
+        }
+        log.info("服务启动成功");
+        log.info("服务启动成功");
     }
 
 }

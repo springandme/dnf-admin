@@ -29,4 +29,19 @@ public interface IDaItemService extends IService<DaItemEntity> {
     void initItemCache();
 
     DaItemEntity getItemInfoCache(Long itemId);
+
+    /**
+     * 获取所有物品（带缓存）
+     */
+    List<DaItemEntity> listAll();
+
+    /**
+     * 分页搜索物品
+     *
+     * @param keyword 搜索关键词
+     * @param current 当前页码
+     * @param pageSize 每页大小
+     * @return 分页结果
+     */
+    Page<DaItemEntity> searchItems(String keyword, Integer current, Integer pageSize);
 }

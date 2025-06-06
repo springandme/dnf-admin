@@ -1,5 +1,5 @@
-import { DownloadOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, message, Drawer, Upload } from 'antd';
+import { DownloadOutlined, PlusOutlined, UploadOutlined, MailOutlined, SendOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { Button, message, Drawer, Upload, Tooltip, Space, Tabs } from 'antd';
 import React, { useState, useRef } from 'react';
 import { PageContainer, FooterToolbar } from '@ant-design/pro-layout';
 import type { ProColumns, ActionType } from '@ant-design/pro-table';
@@ -10,6 +10,12 @@ import { pageItem, removeItem, saveItem } from '@/services/dnf-admin/daItemContr
 import { UploadProps } from 'antd/es/upload/interface';
 import { Access, request, useAccess } from 'umi';
 import { ModalForm, ProFormText } from '@ant-design/pro-form';
+import EnhancedMailSender from '@/components/EnhancedMailSender';
+import CommonItems from '@/components/CommonItems';
+import { getItemTypeValue } from '@/utils/itemTypeMapping';
+import type { CommonItem } from '@/data/commonItems';
+
+const { TabPane } = Tabs;
 
 
 
@@ -19,14 +25,139 @@ const ItemList: React.FC = () => {
   const [currentRow, setCurrentRow] = useState<API.DaItemEntity>();
   const [selectedRowsState, setSelectedRows] = useState<API.DaItemEntity[]>([]);
   const access = useAccess();
+
   /** 新建窗口的弹窗 */
   const [createModalVisible, handleModalVisible] = useState<boolean>(false);
-  /**
- * 添加节点
- *
- * @param fields
- */
 
+  /** 邮件发送相关状态 */
+  const [mailSenderVisible, setMailSenderVisible] = useState<boolean>(false);
+  const [mailTargetItems, setMailTargetItems] = useState<API.DaItemEntity[]>([]);
+
+  /** 标签页状态 */
+  const [activeTab, setActiveTab] = useState<string>('all');
+
+  /** 常用物品相关状态 */
+  const [selectedCommonItems, setSelectedCommonItems] = useState<CommonItem[]>([]);
+
+  /**
+   * 处理单个物品发送邮件
+   */
+  const handleSendSingleMail = (item: API.DaItemEntity) => {
+    setMailTargetItems([item]);
+    setMailSenderVisible(true);
+  };
+
+  /**
+   * 处理批量发送邮件
+   */
+  const handleSendBatchMail = () => {
+    if (selectedRowsState.length === 0) {
+      message.warning('请先选择要发送的物品');
+      return;
+    }
+    setMailTargetItems(selectedRowsState);
+    setMailSenderVisible(true);
+  };
+
+  /**
+   * 邮件发送成功回调
+   */
+  const handleMailSendSuccess = () => {
+    message.success(`成功发送 ${mailTargetItems.length} 个物品的邮件`);
+    setMailTargetItems([]);
+    // 清空选择状态
+    setSelectedRows([]);
+    // 刷新表格数据
+    if (actionRef.current) {
+      actionRef.current.reload();
+    }
+  };
+
+  /**
+   * 关闭邮件发送弹窗
+   */
+  const handleMailSenderCancel = () => {
+    setMailSenderVisible(false);
+    setMailTargetItems([]);
+  };
+
+  /**
+   * 处理常用物品选择
+   */
+  const handleCommonItemSelect = (item: CommonItem) => {
+    setSelectedCommonItems(prev => {
+      const isSelected = prev.some(selected => selected.id === item.id);
+      if (isSelected) {
+        return prev.filter(selected => selected.id !== item.id);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
+  /**
+   * 处理常用物品发送邮件
+   */
+  const handleCommonItemSendMail = (item: CommonItem) => {
+    // 转换为API.DaItemEntity格式
+    const apiItem: API.DaItemEntity = {
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      rarity: item.rarity,
+    };
+    setMailTargetItems([apiItem]);
+    setMailSenderVisible(true);
+  };
+
+  /**
+   * 处理常用物品查看详情
+   */
+  const handleCommonItemView = (item: CommonItem) => {
+    // 转换为API.DaItemEntity格式并显示详情
+    const apiItem: API.DaItemEntity = {
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      rarity: item.rarity,
+    };
+    setCurrentRow(apiItem);
+    setShowDetail(true);
+  };
+
+  /**
+   * 批量发送常用物品邮件
+   */
+  const handleSendSelectedCommonItems = () => {
+    if (selectedCommonItems.length === 0) {
+      message.warning('请先选择要发送的常用物品');
+      return;
+    }
+
+    // 转换为API.DaItemEntity格式
+    const apiItems: API.DaItemEntity[] = selectedCommonItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      rarity: item.rarity,
+    }));
+
+    setMailTargetItems(apiItems);
+    setMailSenderVisible(true);
+  };
+
+  /**
+   * 清空常用物品选择
+   */
+  const handleClearCommonItemSelection = () => {
+    setSelectedCommonItems([]);
+  };
+
+  /**
+   * 添加节点
+   *
+   * @param fields
+   */
   const handleAdd = async (fields: API.DaItemEntity) => {
     const hide = message.loading('正在添加');
 
@@ -155,25 +286,105 @@ const ItemList: React.FC = () => {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      width: 160,
       render: (_, record) => [
-        <Access accessible={access.hashPre('item.remove')}>
-          <a
-            key="id"
+        <Tooltip key="detail" title="查看详情">
+          <Button
+            type="link"
+            size="small"
             onClick={() => {
-              removeItem([record.id]).then((res) => {
-                actionRef.current.reload();
-              });
+              setCurrentRow(record);
+              setShowDetail(true);
             }}
           >
-            删除
-          </a></Access>,
+            详情
+          </Button>
+        </Tooltip>,
+        <Access key="mail" accessible={access.hashPre('mail.sendMail')}>
+          <Tooltip title="发送邮件">
+            <Button
+              type="link"
+              size="small"
+              icon={<MailOutlined />}
+              onClick={() => handleSendSingleMail(record)}
+            >
+              发送
+            </Button>
+          </Tooltip>
+        </Access>,
+        <Access key="delete" accessible={access.hashPre('item.remove')}>
+          <Tooltip title="删除物品">
+            <Button
+              type="link"
+              size="small"
+              danger
+              onClick={() => {
+                removeItem([record.id]).then((res) => {
+                  actionRef.current.reload();
+                });
+              }}
+            >
+              删除
+            </Button>
+          </Tooltip>
+        </Access>,
       ],
     },
   ];
 
+  // 渲染常用物品批量操作工具栏
+  const renderCommonItemsToolbar = () => {
+    if (selectedCommonItems.length === 0) return null;
+
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: 24,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1000,
+        backgroundColor: '#fff',
+        padding: '12px 24px',
+        borderRadius: '6px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        border: '1px solid #d9d9d9'
+      }}>
+        <Space>
+          <span>已选择 {selectedCommonItems.length} 个常用物品</span>
+          <Access accessible={access.hashPre('mail.sendMail')}>
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSendSelectedCommonItems}
+            >
+              批量发送邮件
+            </Button>
+          </Access>
+          <Button onClick={handleClearCommonItemSelection}>
+            清空选择
+          </Button>
+        </Space>
+      </div>
+    );
+  };
+
   return (
     <PageContainer>
-      <ProTable<API.DaItemEntity, API.RListDaItemEntity>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        tabBarExtraContent={
+          activeTab === 'common' && (
+            <Space>
+              <span style={{ color: '#666', fontSize: '12px' }}>
+                已选择: {selectedCommonItems.length} 个物品
+              </span>
+            </Space>
+          )
+        }
+      >
+        <TabPane tab="全部物品" key="all">
+          <ProTable<API.DaItemEntity, API.RListDaItemEntity>
         headerTitle="物品列表"
         actionRef={actionRef}
         rowKey="id"
@@ -236,17 +447,29 @@ const ItemList: React.FC = () => {
             </div>
           }
         >
-          <Access accessible={access.hashPre('item.remove')}>
-            <Button
-              onClick={async () => {
-                await handleRemove(selectedRowsState);
-                setSelectedRows([]);
-                actionRef.current?.reloadAndRest?.();
-              }}
-            >
-              批量删除
-            </Button>
-          </Access>
+          <Space>
+            <Access accessible={access.hashPre('mail.sendMail')}>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSendBatchMail}
+              >
+                批量发送邮件
+              </Button>
+            </Access>
+            <Access accessible={access.hashPre('item.remove')}>
+              <Button
+                danger
+                onClick={async () => {
+                  await handleRemove(selectedRowsState);
+                  setSelectedRows([]);
+                  actionRef.current?.reloadAndRest?.();
+                }}
+              >
+                批量删除
+              </Button>
+            </Access>
+          </Space>
         </FooterToolbar>
       )}
       <Drawer
@@ -257,6 +480,22 @@ const ItemList: React.FC = () => {
           setShowDetail(false);
         }}
         closable={false}
+        extra={
+          currentRow && (
+            <Access accessible={access.hashPre('mail.sendMail')}>
+              <Button
+                type="primary"
+                icon={<MailOutlined />}
+                onClick={() => {
+                  handleSendSingleMail(currentRow);
+                  setShowDetail(false);
+                }}
+              >
+                发送邮件
+              </Button>
+            </Access>
+          )
+        }
       >
         {currentRow?.name && (
           <ProDescriptions<API.DaItemEntity>
@@ -333,6 +572,43 @@ const ItemList: React.FC = () => {
           ]}
         />
       </ModalForm>
+        </TabPane>
+
+        <TabPane
+          tab={
+            <span>
+              <AppstoreOutlined />
+              常用物品
+            </span>
+          }
+          key="common"
+        >
+          <CommonItems
+            onItemSelect={handleCommonItemSelect}
+            onItemSendMail={handleCommonItemSendMail}
+            onItemView={handleCommonItemView}
+            selectedItems={selectedCommonItems}
+            showActions={true}
+          />
+        </TabPane>
+      </Tabs>
+
+      {/* 常用物品批量操作工具栏 */}
+      {renderCommonItemsToolbar()}
+
+      {/* 增强邮件发送组件 */}
+      <EnhancedMailSender
+        visible={mailSenderVisible}
+        onCancel={handleMailSenderCancel}
+        onSuccess={handleMailSendSuccess}
+        prefilledItems={mailTargetItems.map(item => ({
+          itemId: item.id!,
+          itemName: item.name!,
+          itemType: getItemTypeValue(item.type),
+          count: 1,
+        }))}
+        title={`增强邮件发送 - ${mailTargetItems.length === 1 ? mailTargetItems[0]?.name : `${mailTargetItems.length}个物品`}`}
+      />
     </PageContainer>
   );
 };

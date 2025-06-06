@@ -1,6 +1,6 @@
-import { CloseCircleOutlined, CopyOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { Button, message } from 'antd';
-import React, { useEffect, useRef, useState } from 'react';
+import { CloseCircleOutlined, CopyOutlined, PlusOutlined, DeleteOutlined, LoadingOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Button, message, Spin } from 'antd';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
 import type { ProColumns, ActionType } from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
@@ -8,28 +8,147 @@ import { ModalForm, ProFormGroup, ProFormList, ProFormMoney, ProFormSelect, ProF
 import { cleanMail1} from '@/services/dnf-admin/gameToolController';
 import { pageMailSendLog, sendMail } from '@/services/dnf-admin/daMailController';
 import { roleList } from '@/services/dnf-admin/gameRoleController';
-import { listItem } from '@/services/dnf-admin/daItemController';
+import { searchItems } from '@/services/dnf-admin/daItemController';
 import { Access, useAccess } from 'umi';
+import { debounce } from 'lodash';
+import EnhancedMailSender from '@/components/EnhancedMailSender';
+import PlayerListImporter from '@/components/PlayerListImporter';
+
+// 物品搜索缓存接口
+interface ItemSearchCache {
+  [key: string]: {
+    data: API.DaItemEntity[];
+    total: number;
+    timestamp: number;
+  };
+}
 
 const Email: React.FC = () => {
   const actionRef = useRef<ActionType>();
 
   /** 新建窗口的弹窗 */
   const [createModalVisible, handleModalVisible] = useState<boolean>(false);
-  const [itemList, setItemList] = useState<any>([]);
+
+  /** 增强邮件发送弹窗 */
+  const [enhancedMailVisible, setEnhancedMailVisible] = useState<boolean>(false);
+
+  /** 玩家列表导入弹窗 */
+  const [importerVisible, setImporterVisible] = useState<boolean>(false);
+
+  /** 预填充的玩家列表 */
+  const [prefilledPlayers, setPrefilledPlayers] = useState<Array<{ characNo: string; characName: string }>>([]);
+
+  // 物品搜索相关状态
+  const [itemSearchCache, setItemSearchCache] = useState<ItemSearchCache>({});
+  const [itemSearchLoading, setItemSearchLoading] = useState<boolean>(false);
+  const [currentItemKeyword, setCurrentItemKeyword] = useState<string>('');
+
   const access = useAccess();
-  useEffect(() => {
-    listItem({}).then(res => {
-      setItemList(res.data);
-    })
-  }, [createModalVisible]);
+
+  // 缓存过期时间（5分钟）
+  const CACHE_EXPIRE_TIME = 5 * 60 * 1000;
+
+  /**
+   * 搜索物品（带缓存和分页）
+   */
+  const searchItemsWithCache = useCallback(async (keyword: string, current: number = 1, pageSize: number = 50) => {
+    const cacheKey = `${keyword}_${current}_${pageSize}`;
+    const now = Date.now();
+
+    // 检查缓存
+    const cached = itemSearchCache[cacheKey];
+    if (cached && (now - cached.timestamp) < CACHE_EXPIRE_TIME) {
+      return {
+        data: cached.data,
+        total: cached.total,
+        current,
+        pageSize,
+      };
+    }
+
+    try {
+      setItemSearchLoading(true);
+      const response = await searchItems({
+        keyword: keyword.trim(),
+        current,
+        pageSize,
+      });
+
+      if (response.success && response.data) {
+        const result = {
+          data: response.data.records || [],
+          total: response.data.total || 0,
+          current: response.data.current || current,
+          pageSize: response.data.pageSize || pageSize,
+        };
+
+        // 更新缓存
+        setItemSearchCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: result.data,
+            total: result.total,
+            timestamp: now,
+          },
+        }));
+
+        return result;
+      }
+    } catch (error) {
+      console.error('搜索物品失败:', error);
+      message.error('搜索物品失败，请重试');
+    } finally {
+      setItemSearchLoading(false);
+    }
+
+    return {
+      data: [],
+      total: 0,
+      current,
+      pageSize,
+    };
+  }, [itemSearchCache, CACHE_EXPIRE_TIME]);
+
+  /**
+   * 防抖搜索函数
+   */
+  const debouncedSearchItems = useMemo(
+    () => debounce(async (keyword: string) => {
+      if (keyword && keyword.length >= 2) {
+        setCurrentItemKeyword(keyword);
+        await searchItemsWithCache(keyword);
+      }
+    }, 300),
+    [searchItemsWithCache]
+  );
+
+  /**
+   * 清理过期缓存
+   */
+  const cleanExpiredCache = useCallback(() => {
+    const now = Date.now();
+    setItemSearchCache(prev => {
+      const newCache: ItemSearchCache = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        if ((now - value.timestamp) < CACHE_EXPIRE_TIME) {
+          newCache[key] = value;
+        }
+      });
+      return newCache;
+    });
+  }, [CACHE_EXPIRE_TIME]);
+
+  // 定期清理过期缓存
+  React.useEffect(() => {
+    const interval = setInterval(cleanExpiredCache, 60000); // 每分钟清理一次
+    return () => clearInterval(interval);
+  }, [cleanExpiredCache]);
 
   /**
    * 添加节点
    *
    * @param fields
    */
-
   const handleAdd = async (fields: API.SendMailDto) => {
     const hide = message.loading('正在添加');
 
@@ -88,11 +207,21 @@ const Email: React.FC = () => {
         toolBarRender={() => [
           <Access accessible={access.hashPre('mail.sendMail')}>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => handleModalVisible(true)}>
-              发送邮件
+              普通邮件
+            </Button>
+          </Access>,
+          <Access accessible={access.hashPre('mail.sendMail')}>
+            <Button type="primary" icon={<ThunderboltOutlined />} onClick={() => setEnhancedMailVisible(true)}>
+              增强邮件
+            </Button>
+          </Access>,
+          <Access accessible={access.hashPre('mail.sendMail')}>
+            <Button icon={<SendOutlined />} onClick={() => setImporterVisible(true)}>
+              批量发送
             </Button>
           </Access>,
           <Access accessible={access.hashPre('tool.cleanMail')}>
-            <Button type="primary" icon={<DeleteOutlined />} onClick={() => {
+            <Button type="primary" danger icon={<DeleteOutlined />} onClick={() => {
               cleanMail1().then(res=>{
                 if(res.success){
                   message.success(res.message)
@@ -195,17 +324,47 @@ const Email: React.FC = () => {
             <ProFormSelect
               name="itemId"
               label="物品"
+              placeholder="请输入物品名称搜索（至少2个字符）"
               fieldProps={{
-                suffixIcon: null,
+                suffixIcon: itemSearchLoading ? <LoadingOutlined /> : null,
                 showSearch: true,
                 labelInValue: false,
-                autoClearSearchValue: true,
+                autoClearSearchValue: false,
+                filterOption: false,
+                onSearch: (value: string) => {
+                  if (value && value.length >= 2) {
+                    debouncedSearchItems(value);
+                  }
+                },
+                notFoundContent: itemSearchLoading ? (
+                  <div style={{ textAlign: 'center', padding: '12px' }}>
+                    <Spin size="small" />
+                    <span style={{ marginLeft: 8 }}>搜索中...</span>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '12px', color: '#999' }}>
+                    {currentItemKeyword ? '未找到相关物品' : '请输入至少2个字符开始搜索'}
+                  </div>
+                ),
                 fieldNames: {
                   label: 'name',
                   value: 'id',
                 },
               }}
-              request={() => itemList} />
+              request={async (params) => {
+                const keyword = params.keyWords;
+                if (!keyword || keyword.length < 2) {
+                  return [];
+                }
+
+                const result = await searchItemsWithCache(keyword);
+                return result.data.map(item => ({
+                  label: `${item.name} (ID: ${item.id})`,
+                  value: item.id,
+                  ...item,
+                }));
+              }}
+            />
         <ProFormSelect
           name="itemType"
           label="物品类型"
@@ -228,6 +387,37 @@ const Email: React.FC = () => {
           </ProFormGroup>
         </ProFormList>
       </ModalForm>
+
+      {/* 增强邮件发送组件 */}
+      <EnhancedMailSender
+        visible={enhancedMailVisible}
+        onCancel={() => {
+          setEnhancedMailVisible(false);
+          setPrefilledPlayers([]); // 清空预填充数据
+        }}
+        onSuccess={() => {
+          message.success('邮件发送成功！');
+          setPrefilledPlayers([]); // 清空预填充数据
+          if (actionRef.current) {
+            actionRef.current.reload();
+          }
+        }}
+        prefilledPlayers={prefilledPlayers}
+        title="增强邮件发送"
+      />
+
+      {/* 玩家列表导入组件 */}
+      <PlayerListImporter
+        visible={importerVisible}
+        onCancel={() => setImporterVisible(false)}
+        onConfirm={(playerList) => {
+          setImporterVisible(false);
+          // 设置预填充玩家列表并打开增强邮件发送组件
+          setPrefilledPlayers(playerList);
+          setEnhancedMailVisible(true);
+          message.success(`已导入 ${playerList.length} 个角色，请配置邮件内容`);
+        }}
+      />
     </PageContainer>
   );
 };

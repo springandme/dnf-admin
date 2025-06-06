@@ -1,12 +1,10 @@
 package plus.easydo.dnf.service;
 
-
 import com.mybatisflex.core.paginate.Page;
 import plus.easydo.dnf.entity.DaGameEvent;
 import com.mybatisflex.core.service.IService;
 import plus.easydo.dnf.qo.DaGameEventQo;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,5 +19,5 @@ public interface DaGameEventService extends IService<DaGameEvent> {
 
     boolean removeAll();
 
-    Map<String,Integer> getMaxFileIndex();
+    Map<String, Integer> getMaxFileIndex();
 }

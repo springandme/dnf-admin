@@ -49,6 +49,24 @@ export async function listItem(
   });
 }
 
+/** 分页搜索物品 GET /api/item/search */
+export async function searchItems(
+  params: {
+    keyword?: string;
+    current?: number;
+    pageSize?: number;
+  },
+  options?: { [key: string]: any },
+) {
+  return request<API.RPageDaItemEntity>('/api/item/search', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
 /** 分页 POST /api/item/page */
 export async function pageItem(body: API.DaItemQo, options?: { [key: string]: any }) {
   return request<API.RListDaItemEntity>('/api/item/page', {

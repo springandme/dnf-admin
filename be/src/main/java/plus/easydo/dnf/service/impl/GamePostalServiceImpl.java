@@ -89,6 +89,22 @@ public class GamePostalServiceImpl implements GamePostalService {
     }
 
     @Override
+    public void sendEnhancedMail(SendMailDto sendMailDto) {
+        Letter letter = createLetter(sendMailDto.getCharacNo());
+        List<MailItemDto> itemList = sendMailDto.getItemList();
+        if(sendMailDto.getGold() > 0L){
+            //先发送金币邮件
+            sendPortal(letter,sendMailDto.getCharacNo(),0L,0,0L,sendMailDto.getGold());
+        }
+        //发送所有装备（增强版本，支持属性配置）
+        if(Objects.nonNull(itemList)){
+            for (MailItemDto mailItemDto:itemList){
+                sendEnhancedPortal(letter, sendMailDto.getCharacNo(), mailItemDto);
+            }
+        }
+    }
+
+    @Override
     public boolean cleanCharacMail(Long characNo) {
         boolean res1 = letterManager.removeByCharacNo(characNo);
         boolean res2 = postalManager.removeByCharacNo(characNo);
@@ -189,5 +205,43 @@ public class GamePostalServiceImpl implements GamePostalService {
         if(ItemTypeEnum.EQUIPMENT.getCode().equals(itemType) || ItemTypeEnum.PET.getCode().equals(itemType)){
             postal.setAddInfo(1L);
         }
+    }
+
+    /**
+     * 发送增强邮件（支持物品属性配置）
+     */
+    private void sendEnhancedPortal(Letter letter, Long characNo, MailItemDto mailItemDto) {
+        Postal postal = new Postal();
+        //设置信件id
+        postal.setLetterId(letter.getLetterId());
+        //设置物品id
+        postal.setItemId(mailItemDto.getItemId());
+        //设置收件角色
+        postal.setReceiveCharacNo(characNo);
+        postal.setSendCharacNo(0L);
+        //发件人的姓名
+        postal.setSendCharacName(Latin1ConvertUtil.convertLatin1("dnf-admin后台"));
+
+        // 设置基础属性
+        checkAndSetAddInfo(postal, mailItemDto.getItemType(), mailItemDto.getCount());
+        postal.setEndurance(1);
+        postal.setGold(0L);
+        postal.setUnlimitFlag(1);
+
+        // 设置增强属性
+        postal.setUpgrade(mailItemDto.getUpgrade() != null ? mailItemDto.getUpgrade() : 0);
+        postal.setSeperateUpgrade(mailItemDto.getSeperateUpgrade() != null ? mailItemDto.getSeperateUpgrade() : 0);
+        postal.setAmplifyOption(mailItemDto.getAmplifyOption() != null ? mailItemDto.getAmplifyOption() : 0);
+        postal.setAmplifyValue(mailItemDto.getAmplifyValue() != null ? mailItemDto.getAmplifyValue() : 0);
+        postal.setSealFlag(mailItemDto.getSealFlag() != null ? mailItemDto.getSealFlag() : 0);
+
+        // 设置特殊标识
+        checkAndSetAvataFlag(postal, mailItemDto.getItemType());
+        checkAndSetCreatureFlag(postal, mailItemDto.getItemType());
+
+        //邮件发送时间
+        postal.setOccTime(letter.getRegDate());
+
+        postalManager.save(postal);
     }
 }

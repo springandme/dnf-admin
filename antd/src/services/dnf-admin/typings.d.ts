@@ -637,6 +637,101 @@ declare namespace API {
     itemId?: string;
     itemType?: number;
     count?: string;
+    upgrade?: number;
+    seperateUpgrade?: number;
+    amplifyOption?: number;
+    amplifyValue?: number;
+    sealFlag?: number;
+    redStrength?: number;
+    redIntelligence?: number;
+    redSpirit?: number;
+    redStamina?: number;
+  };
+
+  type BatchSendResultDto = {
+    taskId?: string;
+    totalCount?: number;
+    successCount?: number;
+    failCount?: number;
+    status?: string;
+    startTime?: string;
+    endTime?: string;
+    progress?: number;
+    failDetails?: SendFailDetail[];
+    errorMessage?: string;
+  };
+
+  type SendFailDetail = {
+    characNo?: string;
+    characName?: string;
+    failReason?: string;
+  };
+
+  type RBatchSendResultDto = {
+    data?: BatchSendResultDto;
+    errorCode?: string;
+    errorMessage?: string;
+    success?: boolean;
+    total?: string;
+  };
+
+  type RListLong = {
+    data?: number[];
+    errorCode?: string;
+    errorMessage?: string;
+    success?: boolean;
+    total?: string;
+  };
+
+  type RString = {
+    data?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    success?: boolean;
+    total?: string;
+  };
+
+  type BatchSendResultDto = {
+    taskId?: string;
+    totalCount?: number;
+    successCount?: number;
+    failCount?: number;
+    status?: string;
+    startTime?: string;
+    endTime?: string;
+    progress?: number;
+    failDetails?: SendFailDetail[];
+    errorMessage?: string;
+  };
+
+  type SendFailDetail = {
+    characNo?: string;
+    characName?: string;
+    failReason?: string;
+  };
+
+  type RBatchSendResultDto = {
+    data?: BatchSendResultDto;
+    errorCode?: string;
+    errorMessage?: string;
+    success?: boolean;
+    total?: string;
+  };
+
+  type RListLong = {
+    data?: number[];
+    errorCode?: string;
+    errorMessage?: string;
+    success?: boolean;
+    total?: string;
+  };
+
+  type RString = {
+    data?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    success?: boolean;
+    total?: string;
   };
 
   type OnlineCountVo = {
@@ -1040,6 +1135,19 @@ declare namespace API {
     total?: string;
   };
 
+  type RPageDaItemEntity = {
+    code?: number;
+    data?: {
+      records?: DaItemEntity[];
+      total?: number;
+      current?: number;
+      pageSize?: number;
+    };
+    message?: string;
+    errorMessage?: string;
+    success?: boolean;
+  };
+
   type RListDaMailSendLog = {
     code?: number;
     data?: DaMailSendLog[];
@@ -1220,10 +1328,14 @@ declare namespace API {
 
   type SendMailDto = {
     characNo?: string;
+    characNoList?: string[];
     title?: string;
     content?: string;
     gold?: string;
     itemList?: MailItemDto[];
+    sendType?: string;
+    templateName?: string;
+    saveAsTemplate?: boolean;
   };
 
   type sendNoticeParams = {

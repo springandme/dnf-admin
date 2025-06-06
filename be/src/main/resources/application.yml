@@ -114,6 +114,18 @@ sa-token:
   # 是否输出操作日志
   is-log: true
 
+############## DNF Admin 缓存配置 ##############
+dnf:
+  cache:
+    # 物品缓存过期时间（小时）
+    item-cache-expire-hours: 6
+    # 物品缓存最大容量
+    item-cache-maximum-size: 100000
+    # 缓存统计开关
+    enable-stats: true
+    # 缓存预热开关
+    enable-warmup: true
+
 #management:
 #  server:
 #    port: 8689

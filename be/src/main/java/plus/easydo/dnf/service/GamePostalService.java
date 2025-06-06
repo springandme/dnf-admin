@@ -28,6 +28,11 @@ public interface GamePostalService {
 
     void sendMail(SendMailDto sendMailDto);
 
+    /**
+     * 发送增强邮件（支持物品属性配置）
+     */
+    void sendEnhancedMail(SendMailDto sendMailDto);
+
     boolean cleanCharacMail(Long characNo);
 
     boolean cleanMail();

@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.json.JSONObject;
 import com.alibaba.excel.EasyExcelFactory;
+import com.mybatisflex.core.paginate.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
@@ -126,15 +127,56 @@ public class DaItemController {
 
 
     /**
-     * 查询所有物品缓存
+     * 查询所有物品缓存（优化版本，支持缓存）
      *
-     * @return 所有数据
+     * @param name 物品名称（可选）
+     * @return 物品列表
      */
     @Operation(summary = "查询所有物品")
     @SaCheckLogin
     @GetMapping("/list")
-    public R<List<DaItemEntity>> listItem(@RequestParam(value = "name", required = false)String name) {
-        return DataResult.ok(daItemService.listByName(name));
+    public R<List<DaItemEntity>> listItem(@RequestParam(value = "name", required = false) String name) {
+        List<DaItemEntity> result;
+
+        if (name == null || name.trim().isEmpty()) {
+            // 查询所有物品，使用缓存优化
+            result = daItemService.listAll();
+        } else {
+            // 按名称查询，使用缓存优化
+            result = daItemService.listByName(name.trim());
+        }
+
+        return DataResult.ok(result);
+    }
+
+    /**
+     * 分页搜索物品（新增接口，支持关键词搜索和分页）
+     *
+     * @param keyword 搜索关键词
+     * @param current 当前页码，默认1
+     * @param pageSize 每页大小，默认50，最大100
+     * @return 分页结果
+     */
+    @Operation(summary = "分页搜索物品")
+    @SaCheckLogin
+    @GetMapping("/search")
+    public DataResult<List<DaItemEntity>> searchItems(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "current", defaultValue = "1") Integer current,
+            @RequestParam(value = "pageSize", defaultValue = "50") Integer pageSize) {
+
+        // 限制每页最大数量，防止数据过载
+        if (pageSize > 100) {
+            pageSize = 100;
+        }
+
+        // 最小搜索长度限制
+        if (keyword != null && keyword.trim().length() < 2) {
+            return DataResult.ok(new Page<>(current, pageSize));
+        }
+
+        Page<DaItemEntity> result = daItemService.searchItems(keyword, current, pageSize);
+        return DataResult.ok(result);
     }
 
 
