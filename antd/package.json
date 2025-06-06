@@ -1,6 +1,6 @@
 {
   "name": "DNF-ADMIN",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "private": true,
   "main": "main.js",
   "description": "An out-of-box UI solution for enterprise applications",
